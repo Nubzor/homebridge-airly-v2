@@ -1,5 +1,11 @@
-# Homebridge-airly-v2
-[![NPM Version](https://img.shields.io/npm/v/homebridge-airly.svg)](https://www.npmjs.com/package/homebridge-airly-v2)
+# homebridge-airly-v2-nubzor
+[![NPM Version](https://img.shields.io/npm/v/homebridge-airly-v2-nubzor.svg)](https://www.npmjs.com/package/homebridge-airly-v2-nubzor)
+
+**This project is based on [Homebridge-airly-v2 made by andrzejf1994](https://github.com/andrzejf1994/homebridge-airly-v2) it contains several improvements as the original project seems to be abandoned**
+
+The difference between the base version is:
+1. A valid npm package with works with Airly API v2 - as it doesn't work on Andrzej's version ([issue](https://github.com/andrzejf1994/homebridge-airly-v2/issues/1))
+1. Removed dependency on [request](https://www.npmjs.com/package/request) library as it becomes deprecated - using built-in https module instead
 
 **Homebridge plugin that is showing information about air quality from Airly API.**
 
