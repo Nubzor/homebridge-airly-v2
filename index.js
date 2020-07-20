@@ -2,7 +2,7 @@
 
 var Service, Characteristic;
 var airService;
-var request = require('request');
+var https = require('https');
 
 module.exports = function (homebridge) {
     Service = homebridge.hap.Service;
@@ -45,36 +45,46 @@ AirAccessory.prototype = {
     getAirData: function (callback) {
         var self = this;
         var aqi = 0;
-        var url = 'https://airapi.airly.eu/v2/measurements/point?lat=' + this.latitude + '&lng=' + this.longitude;
 
+        function onError(err) {
+            airService.setCharacteristic(Characteristic.StatusFault, 1);
+            self.log.error("Airly Network or Unknown Error.");
+            callback(err);
+        }
 
         // Make request only every ten minutes
         if (this.lastupdate === 0 || this.lastupdate + 600 < (new Date().getTime() / 1000) || this.cache === undefined) {
 
-            request({
-                url: url,
-                json: true,
+            https.get({
+                host: 'airapi.airly.eu',
+                path: '/v2/measurements/point?lat=' + this.latitude + '&lng=' + this.longitude,
                 headers: {
                     'apikey': self.apikey
-                }
-            }, function (err, response, data) {
+                },
+            }, function(response) {
+                if (response.statusCode === 200) {
+                    var data = [];
 
-                // If no errors
-                if (!err && response.statusCode === 200) {
+                    response.on('data', function(chunk) {
+                        data.push(chunk);
+                    })
 
-                    aqi = self.updateData(data, 'Fetch');
-                    callback(null, self.transformAQI(aqi));
+                    response.on('end', function() {
+                        try {
+                            var _response = JSON.parse(data.join());
 
-                    // If error
+                            aqi = self.updateData(_response, 'Fetch');
+                            callback(null, self.transformAQI(aqi));
+                        } catch (e) {
+                            onError(e);
+                        }
+                    });
                 } else {
-                    airService.setCharacteristic(Characteristic.StatusFault, 1);
-                    self.log.error("Airly Network or Unknown Error.");
-                    callback(err);
+                    onError('Status code different than 200 - ' + response.statusCode);
                 }
+            }).on('error', onError);
 
-            });
-
-            // Return cached data
+        // Return cached data
         } else {
             aqi = self.updateData(self.cache, 'Cache');
             callback(null, self.transformAQI(aqi));
