@@ -1,7 +1,7 @@
 {
-  "name": "homebridge-airly-v2",
-  "version": "2.0",
-  "description": "Homebridge plugin for showing air condition data",
+  "name": "homebridge-airly-v2.1",
+  "version": "1.0.0",
+  "description": "A fork of Homebride-airly-v2 plugin orginally made by andrzejf1994. The fork has been created as the original npm plugin was out of date and doesn't work properly with new Airly v2 API",
   "main": "index.js",
   "keywords": [
     "homebridge-plugin",
@@ -15,7 +15,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/andrzejf1994/homebridge-airly-v2.git"
+    "url": "git+https://github.com/Nubzor/homebridge-airly-v2.git"
   },
   "engines": {
     "node": ">=0.12.0",
@@ -24,9 +24,9 @@
   "author": "Beniamin Rychter",
   "license": "GNU",
   "bugs": {
-    "url": "https://github.com/andrzejf1994/homebridge-airly-v2/issues"
+    "url": "https://github.com/Nubzor/homebridge-airly-v2/issues"
   },
-  "homepage": "https://github.com/andrzejf1994/homebridge-airly-v2#readme",
+  "homepage": "https://github.com/Nubzor/homebridge-airly-v2#readme",
   "dependencies": {
     "request": "^2.83.0"
   }
