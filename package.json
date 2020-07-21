@@ -1,6 +1,6 @@
 {
-  "name": "homebridge-airly-v2.1",
-  "version": "1.0.0",
+  "name": "homebridge-airly-v2-nubzor",
+  "version": "1.0.1",
   "description": "A fork of Homebride-airly-v2 plugin orginally made by andrzejf1994. The fork has been created as the original npm plugin was out of date and doesn't work properly with new Airly v2 API",
   "main": "index.js",
   "keywords": [
