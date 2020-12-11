@@ -1,4 +1,5 @@
 import https from 'https';
+import http from 'http';
 
 import { AirlyResponse } from '../types/AirlyResponse';
 import AirAccessory from './AirAccessory';
@@ -16,9 +17,11 @@ export default class Airly {
                 headers: {
                     'apikey': this.apiKey,
                 },
-            }, (response) => {
+            }, (response: http.IncomingMessage) => {
                 if (response.statusCode === 200) {
-                    this.onResponse(response, resolve, reject);
+                    this.onResponse(response)
+                        .then(resolve)
+                        .catch(reject);
                 } else {
                     reject('Status code different than 200 - ' + response.statusCode);
                 }
@@ -28,22 +31,24 @@ export default class Airly {
         })
     }
 
-    onResponse(response, resolve, reject) {   
-        const data : Array<string> = [];
+    onResponse(response: http.IncomingMessage) {
+        return new Promise((resolve, reject) => {
+            const data : Array<string> = [];
 
-        response.on('data', (chunk: string) => {
-            data.push(chunk);
+            response.on('data', (chunk: string) => {
+                data.push(chunk);
+            })
+
+            response.on('end', () => {
+                try {
+                    const _response: AirlyResponse = JSON.parse(data.join(''));
+
+                    resolve(_response);
+                } catch (e) {
+                    reject(e);
+                }
+            });
         })
-
-        response.on('end', () => {
-            try {
-                const _response: AirlyResponse = JSON.parse(data.join());
-
-                resolve(_response);
-            } catch (e) {
-                reject(e);
-            }
-        });
     }
 
     transformAQI(aqi: number): number {
