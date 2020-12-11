@@ -1,6 +1,9 @@
-import { AccessoryPlugin, AccessoryConfig, API, Characteristic, Logging, Service } from 'homebridge';
+import { AccessoryPlugin, API, Characteristic, Logging, Service } from 'homebridge';
 
 import { AirlyResponse } from '../types/AirlyResponse';
+import { AccessoryConfig } from '../types/AccessoryConfig';
+
+import FetchModes from './enums/FetchModes';
 
 import Airly from './Airly';
 
@@ -29,7 +32,8 @@ export default class AirAccessory implements AccessoryPlugin {
         this.verifyConfig(config);
         this.assignConfigKeysToClassProperties(config);
 
-        this.Airly = new Airly(config['apikey']);
+        // @ts-ignore
+        this.Airly = new Airly(config.apikey);
 
         this.log.info('Airly is working');
     }
@@ -48,11 +52,11 @@ export default class AirAccessory implements AccessoryPlugin {
         })
     }
 
-    getAirData(callback) {
-        var self = this;
-        var aqi = 0;
+    getAirData(callback: Function) {
+        const self = this;
+        let aqi = 0;
 
-        function onError(err) {
+        function onError(err: Error) {
             if (self.airService !== null) {
                 self.airService.setCharacteristic(self.Characteristic.StatusFault, 1);
             }
@@ -62,40 +66,62 @@ export default class AirAccessory implements AccessoryPlugin {
         }
 
         // Make request only every ten minutes
-        if (this.lastUpdate === 0 || this.lastUpdate + 600 < (new Date().getTime() / 1000) || this.cache === undefined) {
+        if (this.cache === null || this.lastUpdate === 0 || this.lastUpdate + 600 < (new Date().getTime() / 1000)) {
             this.Airly.getMeasurements(this.latitude, this.longitude)
                 .then(response => {
-                    aqi = self.updateData(response, 'Fetch');
+                    aqi = self.updateData(response, FetchModes.FETCH);
 
                     callback(null, this.Airly.transformAQI(aqi));
                 }).catch(onError);
         } else {
-            aqi = self.updateData(self.cache, 'Cache');
+            aqi = self.updateData(this.cache, FetchModes.CACHE);
+
             callback(null, this.Airly.transformAQI(aqi));
         }
     }
 
-    updateData(data, type) {
-        if (this.airService === null) {
-            this.log.error('AirQualiltySensor is null - probably has not been initialized');
-            return;
-        }
-
-        this.airService.setCharacteristic(this.Characteristic.StatusFault, 0);
-
-        this.airService.setCharacteristic(this.Characteristic.PM2_5Density, data.current.values[1].value);
-        this.airService.setCharacteristic(this.Characteristic.PM10Density, data.current.values[2].value);
+    updateData(data: AirlyResponse, type: string): number {
+        this.setAirCharacteristics(data);
 
         var aqi = data.current.indexes[0].value;
         this.log.info('[%s] Airly air quality is: %s.', type, aqi.toString());
 
         this.cache = data;
 
-        if (type === 'Fetch') {
+        if (type === FetchModes.FETCH) {
             this.lastUpdate = new Date().getTime() / 1000;
         }
 
         return aqi;
+    }
+
+    setAirCharacteristics(data: AirlyResponse) {
+        const characteristics : Array<{
+            name: string;
+            type: typeof Characteristic;
+        }> = [
+            { name: 'PM25', type: this.Characteristic.PM2_5Density },
+            { name: 'PM10', type: this.Characteristic.PM10Density },
+        ];
+
+        if (this.airService === null) {
+            this.log.error('AirQualiltySensor is null - probably has not been initialized');
+
+            return 0;
+        }
+
+        characteristics.forEach((characteristic) => {
+            const item = data.current.values.find(value => {
+                return value.name === characteristic.name;
+            })
+
+            if (item) {
+                // @ts-ignore
+                this.airService.setCharacteristic(characteristic.type, item.value);
+            }
+        });
+
+        this.airService.setCharacteristic(this.Characteristic.StatusFault, 0);
     }
 
     identify(): void {

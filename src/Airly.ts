@@ -2,15 +2,14 @@ import https from 'https';
 import http from 'http';
 
 import { AirlyResponse } from '../types/AirlyResponse';
-import AirAccessory from './AirAccessory';
+
+import AirQualiltySensorValues from './enums/AirQualiltySensorValues';
 
 export default class Airly {
-    constructor(private readonly apiKey) {
-
-    }
+    constructor(private readonly apiKey: string) {}
 
     getMeasurements(latitude: string, longitude: string) {
-        return new Promise((resolve, reject) => {
+        return new Promise<AirlyResponse>((resolve, reject) => {
             https.get({
                 host: 'airapi.airly.eu',
                 path: '/v2/measurements/point?lat=' + latitude + '&lng=' + longitude, 
@@ -32,7 +31,7 @@ export default class Airly {
     }
 
     onResponse(response: http.IncomingMessage) {
-        return new Promise((resolve, reject) => {
+        return new Promise<AirlyResponse>((resolve, reject) => {
             const data : Array<string> = [];
 
             response.on('data', (chunk: string) => {
@@ -53,19 +52,19 @@ export default class Airly {
 
     transformAQI(aqi: number): number {
         if (!aqi) {
-            return 0; // Error or unknown response
+            return AirQualiltySensorValues.UNKNOWN;
         } else if (aqi <= 25) {
-            return 1; // Return EXCELLENT
+            return AirQualiltySensorValues.EXCELLENT;
         } else if (aqi > 25 && aqi <= 50) {
-            return 2; // Return GOOD
+            return AirQualiltySensorValues.GOOD;
         } else if (aqi > 50 && aqi <= 75) {
-            return 3; // Return FAIR
+            return AirQualiltySensorValues.FAIR;
         } else if (aqi > 75 && aqi <= 100) {
-            return 4; // Return INFERIOR
+            return AirQualiltySensorValues.INFERIOR;
         } else if (aqi > 100) {
-            return 5; // Return POOR (Homekit only goes to cat 5, so combined the last two AQI cats of Very Unhealty and Hazardous.
+            return AirQualiltySensorValues.POOR;
         } else {
-            return 0; // Error or unknown response.
+            return AirQualiltySensorValues.UNKNOWN;
         }
     }
 }
