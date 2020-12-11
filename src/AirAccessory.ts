@@ -1,3 +1,6 @@
+// @ts-nocheck
+// temporary
+
 const https = require('https');
 
 module.exports = class AirAccessory {
