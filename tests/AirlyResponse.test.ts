@@ -9,7 +9,7 @@ describe('Checking Airly response', () => {
     test('Valid JSON as it should not throw', () => {
         expect.assertions(1);
 
-        const msg = fs.createReadStream(path.resolve(__dirname, './AirlyResponse.js'), { highWaterMark: 8 })
+        const msg = fs.createReadStream(path.resolve(__dirname, './AirlyResponse.json'), { highWaterMark: 8 })
 
         // @ts-ignore
         return expect(airly.onResponse(msg)).resolves.toBeInstanceOf(Object);
