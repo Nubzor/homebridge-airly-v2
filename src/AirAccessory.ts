@@ -1,6 +1,8 @@
 import { AccessoryPlugin, AccessoryConfig, API, Characteristic, Logging, Service } from 'homebridge';
 
-import https from 'https';
+import { AirlyResponse } from '../types/AirlyResponse';
+
+import Airly from './Airly';
 
 export default class AirAccessory implements AccessoryPlugin {
     private readonly Service: typeof Service = this.api.hap.Service;
@@ -10,12 +12,14 @@ export default class AirAccessory implements AccessoryPlugin {
 
     private mandatoryConfigKeys: Array<string> = ['name', 'apikey', 'latitude', 'longitude'];
 
-    private lastUpdate: number;
-    private cache: any;
-    latitude: string = "";
-    longitude: string = "" ;
-    apikey: string | number | string[] | undefined;
-    name: string | undefined;
+    private name: string = "";
+    private latitude: string = "";
+    private longitude: string = "" ;
+
+    private lastUpdate: number = 0;
+    private cache: AirlyResponse | null = null;
+
+    private Airly: Airly;
 
     constructor(
         private readonly log: Logging, 
@@ -25,8 +29,7 @@ export default class AirAccessory implements AccessoryPlugin {
         this.verifyConfig(config);
         this.assignConfigKeysToClassProperties(config);
 
-        this.lastUpdate = 0;
-        this.cache = undefined;
+        this.Airly = new Airly(config['apikey']);
 
         this.log.info('Airly is working');
     }
@@ -60,40 +63,15 @@ export default class AirAccessory implements AccessoryPlugin {
 
         // Make request only every ten minutes
         if (this.lastUpdate === 0 || this.lastUpdate + 600 < (new Date().getTime() / 1000) || this.cache === undefined) {
+            this.Airly.getMeasurements(this.latitude, this.longitude)
+                .then(response => {
+                    aqi = self.updateData(response, 'Fetch');
 
-            https.get({
-                host: 'airapi.airly.eu',
-                path: '/v2/measurements/point?lat=' + this.latitude + '&lng=' + this.longitude, 
-                headers: {
-                    'apikey': self.apikey,
-                },
-            }, (response) => {
-                if (response.statusCode === 200) {
-                    var data : Array<any> = [];
-
-                    response.on('data', (chunk) => {
-                        data.push(chunk);
-                    })
-
-                    response.on('end', () => {
-                        try {
-                            var _response = JSON.parse(data.join());
-
-                            aqi = self.updateData(_response, 'Fetch');
-                            callback(null, self.transformAQI(aqi));
-                        } catch (e) {
-                            onError(e);
-                        }
-                    });
-                } else {
-                    onError('Status code different than 200 - ' + response.statusCode);
-                }
-            }).on('error', onError);
-
-            // Return cached data
+                    callback(null, this.Airly.transformAQI(aqi));
+                }).catch(onError);
         } else {
             aqi = self.updateData(self.cache, 'Cache');
-            callback(null, self.transformAQI(aqi));
+            callback(null, this.Airly.transformAQI(aqi));
         }
     }
 
@@ -110,7 +88,7 @@ export default class AirAccessory implements AccessoryPlugin {
 
         var aqi = data.current.indexes[0].value;
         this.log.info('[%s] Airly air quality is: %s.', type, aqi.toString());
-console.log(data);
+
         this.cache = data;
 
         if (type === 'Fetch') {
@@ -120,37 +98,18 @@ console.log(data);
         return aqi;
     }
 
-    /**
-     * Return Air Quality Index
-     * @param aqi
-     * @returns {number}
-     */
-    transformAQI(aqi) {
-        if (!aqi) {
-            return 0; // Error or unknown response
-        } else if (aqi <= 25) {
-            return 1; // Return EXCELLENT
-        } else if (aqi > 25 && aqi <= 50) {
-            return 2; // Return GOOD
-        } else if (aqi > 50 && aqi <= 75) {
-            return 3; // Return FAIR
-        } else if (aqi > 75 && aqi <= 100) {
-            return 4; // Return INFERIOR
-        } else if (aqi > 100) {
-            return 5; // Return POOR (Homekit only goes to cat 5, so combined the last two AQI cats of Very Unhealty and Hazardous.
-        } else {
-            return 0; // Error or unknown response.
-        }
-    }
-
     identify(): void {
         this.log('Identify requested!');
     }
 
-    getServices(): Service[] {
-        /**
-         * Informations
-         */
+    getServices(): Service[] {    
+        return [
+            this.prepareInformationService(),
+            this.prepareAirService(),
+        ];
+    }
+
+    prepareInformationService(): Service {
         const informationService = new this.Service.AccessoryInformation();
 
         informationService
@@ -158,9 +117,10 @@ console.log(data);
             .setCharacteristic(this.Characteristic.Model, 'API')
             .setCharacteristic(this.Characteristic.SerialNumber, '123-456');
 
-        /**
-         * AirService
-         */
+        return informationService;
+    }
+
+    prepareAirService(): Service {
         this.airService = new this.Service.AirQualitySensor(this.name);
 
         this.airService
@@ -170,7 +130,7 @@ console.log(data);
         this.airService.addCharacteristic(this.Characteristic.StatusFault);
         this.airService.addCharacteristic(this.Characteristic.PM2_5Density);
         this.airService.addCharacteristic(this.Characteristic.PM10Density);
-    
-        return [informationService, this.airService];
+
+        return this.airService;
     }
 }
