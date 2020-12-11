@@ -40,7 +40,7 @@ module.exports = class AirAccessory {
         var aqi = 0;
 
         function onError(err) {
-            self.airService.setCharacteristic(this.characteristic.StatusFault, 1);
+            self.airService.setCharacteristic(self.characteristic.StatusFault, 1);
             self.log.error('Airly Network or Unknown Error.');
             callback(err);
         }
