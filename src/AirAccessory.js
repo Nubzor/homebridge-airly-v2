@@ -18,14 +18,18 @@ module.exports = class AirAccessory {
         this.longitude = config['longitude'];
 
 
-        if (!this.latitude) throw new Error("Airly - you must provide a config value for 'latitude'.");
-        if (!this.longitude) throw new Error("Airly - you must provide a config value for 'longitude'.");
+        if (!this.latitude) {
+            throw new Error('Airly - you must provide a config value for \'latitude\'.');
+        }
+        if (!this.longitude) {
+            throw new Error('Airly - you must provide a config value for \'longitude\'.');
+        }
 
 
         this.lastupdate = 0;
         this.cache = undefined;
 
-        this.log.info("Airly is working");
+        this.log.info('Airly is working');
     }
 
     getAirData(callback) {
@@ -34,7 +38,7 @@ module.exports = class AirAccessory {
 
         function onError(err) {
             self.airService.setCharacteristic(this.characteristic.StatusFault, 1);
-            self.log.error("Airly Network or Unknown Error.");
+            self.log.error('Airly Network or Unknown Error.');
             callback(err);
         }
 
@@ -45,17 +49,17 @@ module.exports = class AirAccessory {
                 host: 'airapi.airly.eu',
                 path: '/v2/measurements/point?lat=' + this.latitude + '&lng=' + this.longitude,
                 headers: {
-                    'apikey': self.apikey
+                    'apikey': self.apikey,
                 },
-            }, function(response) {
+            }, (response) => {
                 if (response.statusCode === 200) {
                     var data = [];
 
-                    response.on('data', function(chunk) {
+                    response.on('data', (chunk) => {
                         data.push(chunk);
                     })
 
-                    response.on('end', function() {
+                    response.on('end', () => {
                         try {
                             var _response = JSON.parse(data.join());
 
@@ -70,7 +74,7 @@ module.exports = class AirAccessory {
                 }
             }).on('error', onError);
 
-        // Return cached data
+            // Return cached data
         } else {
             aqi = self.updateData(self.cache, 'Cache');
             callback(null, self.transformAQI(aqi));
@@ -85,7 +89,7 @@ module.exports = class AirAccessory {
         this.airService.setCharacteristic(this.characteristic.PM10Density, data.current.values[2].value);
 
         var aqi = data.current.indexes[0].value;
-        this.log.info("[%s] Airly air quality is: %s.", type, aqi.toString());
+        this.log.info('[%s] Airly air quality is: %s.', type, aqi.toString());
 
         this.cache = data;
 
@@ -120,7 +124,7 @@ module.exports = class AirAccessory {
     }
 
     identify(callback) {
-        this.log("Identify requested!");
+        this.log('Identify requested!');
         callback(); // success
     }
 
@@ -132,9 +136,9 @@ module.exports = class AirAccessory {
          */
         var informationService = new this.service.AccessoryInformation();
         informationService
-            .setCharacteristic(this.characteristic.Manufacturer, "Airly")
-            .setCharacteristic(this.characteristic.Model, "API")
-            .setCharacteristic(this.characteristic.SerialNumber, "123-456");
+            .setCharacteristic(this.characteristic.Manufacturer, 'Airly')
+            .setCharacteristic(this.characteristic.Model, 'API')
+            .setCharacteristic(this.characteristic.SerialNumber, '123-456');
         services.push(informationService);
 
         /**
