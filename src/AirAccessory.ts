@@ -1,38 +1,48 @@
-// @ts-nocheck
-// temporary
+import { AccessoryPlugin, AccessoryConfig, API, Characteristic, Logging, Service } from 'homebridge';
 
-const https = require('https');
+import https from 'https';
 
-module.exports = class AirAccessory {
-    constructor(log, config, api) {
-        this.log = log;
+export default class AirAccessory implements AccessoryPlugin {
+    private readonly Service: typeof Service = this.api.hap.Service;
+    private readonly Characteristic: typeof Characteristic = this.api.hap.Characteristic;
+    
+    private airService: Service | null = null;
 
-        this.service = api.hap.Service;
-        this.characteristic = api.hap.Characteristic;
+    private mandatoryConfigKeys: Array<string> = ['name', 'apikey', 'latitude', 'longitude'];
 
-        this.airService;
+    private lastUpdate: number;
+    private cache: any;
+    latitude: string = "";
+    longitude: string = "" ;
+    apikey: string | number | string[] | undefined;
+    name: string | undefined;
 
-        // Name and API key from airly
-        this.name = config['name'];
-        this.apikey = config['apikey'];
+    constructor(
+        private readonly log: Logging, 
+        private readonly config: AccessoryConfig,
+        private readonly api: API) {
 
-        // Latitude and longitude
-        this.latitude = config['latitude'];
-        this.longitude = config['longitude'];
+        this.verifyConfig(config);
+        this.assignConfigKeysToClassProperties(config);
 
-
-        if (!this.latitude) {
-            throw new Error('Airly - you must provide a config value for \'latitude\'.');
-        }
-        if (!this.longitude) {
-            throw new Error('Airly - you must provide a config value for \'longitude\'.');
-        }
-
-
-        this.lastupdate = 0;
+        this.lastUpdate = 0;
         this.cache = undefined;
 
         this.log.info('Airly is working');
+    }
+
+    verifyConfig(config: AccessoryConfig) {
+        this.mandatoryConfigKeys.forEach((key: string) => {
+            if (!config[key]) {
+                throw new Error(`Airly - you must provide a config value for ${key}.`)
+            }
+        })
+    }
+
+    assignConfigKeysToClassProperties(config: AccessoryConfig) {
+        this.mandatoryConfigKeys.forEach((key: string) => {
+            this[key] = config[key];
+        })
     }
 
     getAirData(callback) {
@@ -40,23 +50,26 @@ module.exports = class AirAccessory {
         var aqi = 0;
 
         function onError(err) {
-            self.airService.setCharacteristic(self.characteristic.StatusFault, 1);
+            if (self.airService !== null) {
+                self.airService.setCharacteristic(self.Characteristic.StatusFault, 1);
+            }
+
             self.log.error('Airly Network or Unknown Error.');
             callback(err);
         }
 
         // Make request only every ten minutes
-        if (this.lastupdate === 0 || this.lastupdate + 600 < (new Date().getTime() / 1000) || this.cache === undefined) {
+        if (this.lastUpdate === 0 || this.lastUpdate + 600 < (new Date().getTime() / 1000) || this.cache === undefined) {
 
             https.get({
                 host: 'airapi.airly.eu',
-                path: '/v2/measurements/point?lat=' + this.latitude + '&lng=' + this.longitude,
+                path: '/v2/measurements/point?lat=' + this.latitude + '&lng=' + this.longitude, 
                 headers: {
                     'apikey': self.apikey,
                 },
             }, (response) => {
                 if (response.statusCode === 200) {
-                    var data = [];
+                    var data : Array<any> = [];
 
                     response.on('data', (chunk) => {
                         data.push(chunk);
@@ -85,19 +98,23 @@ module.exports = class AirAccessory {
     }
 
     updateData(data, type) {
+        if (this.airService === null) {
+            this.log.error('AirQualiltySensor is null - probably has not been initialized');
+            return;
+        }
 
-        this.airService.setCharacteristic(this.characteristic.StatusFault, 0);
+        this.airService.setCharacteristic(this.Characteristic.StatusFault, 0);
 
-        this.airService.setCharacteristic(this.characteristic.PM2_5Density, data.current.values[1].value);
-        this.airService.setCharacteristic(this.characteristic.PM10Density, data.current.values[2].value);
+        this.airService.setCharacteristic(this.Characteristic.PM2_5Density, data.current.values[1].value);
+        this.airService.setCharacteristic(this.Characteristic.PM10Density, data.current.values[2].value);
 
         var aqi = data.current.indexes[0].value;
         this.log.info('[%s] Airly air quality is: %s.', type, aqi.toString());
-
+console.log(data);
         this.cache = data;
 
         if (type === 'Fetch') {
-            this.lastupdate = new Date().getTime() / 1000;
+            this.lastUpdate = new Date().getTime() / 1000;
         }
 
         return aqi;
@@ -110,55 +127,50 @@ module.exports = class AirAccessory {
      */
     transformAQI(aqi) {
         if (!aqi) {
-            return (0); // Error or unknown response
+            return 0; // Error or unknown response
         } else if (aqi <= 25) {
-            return (1); // Return EXCELLENT
+            return 1; // Return EXCELLENT
         } else if (aqi > 25 && aqi <= 50) {
-            return (2); // Return GOOD
+            return 2; // Return GOOD
         } else if (aqi > 50 && aqi <= 75) {
-            return (3); // Return FAIR
+            return 3; // Return FAIR
         } else if (aqi > 75 && aqi <= 100) {
-            return (4); // Return INFERIOR
+            return 4; // Return INFERIOR
         } else if (aqi > 100) {
-            return (5); // Return POOR (Homekit only goes to cat 5, so combined the last two AQI cats of Very Unhealty and Hazardous.
+            return 5; // Return POOR (Homekit only goes to cat 5, so combined the last two AQI cats of Very Unhealty and Hazardous.
         } else {
-            return (0); // Error or unknown response.
+            return 0; // Error or unknown response.
         }
     }
 
-    identify(callback) {
+    identify(): void {
         this.log('Identify requested!');
-        callback(); // success
     }
 
-    getServices() {
-        var services = [];
-
+    getServices(): Service[] {
         /**
          * Informations
          */
-        var informationService = new this.service.AccessoryInformation();
+        const informationService = new this.Service.AccessoryInformation();
+
         informationService
-            .setCharacteristic(this.characteristic.Manufacturer, 'Airly')
-            .setCharacteristic(this.characteristic.Model, 'API')
-            .setCharacteristic(this.characteristic.SerialNumber, '123-456');
-        services.push(informationService);
+            .setCharacteristic(this.Characteristic.Manufacturer, 'Airly')
+            .setCharacteristic(this.Characteristic.Model, 'API')
+            .setCharacteristic(this.Characteristic.SerialNumber, '123-456');
 
         /**
          * AirService
          */
-        this.airService = new this.service.AirQualitySensor(this.name);
+        this.airService = new this.Service.AirQualitySensor(this.name);
 
         this.airService
-            .getCharacteristic(this.characteristic.AirQuality)
+            .getCharacteristic(this.Characteristic.AirQuality)
             .on('get', this.getAirData.bind(this));
 
-        this.airService.addCharacteristic(this.characteristic.StatusFault);
-        this.airService.addCharacteristic(this.characteristic.PM2_5Density);
-        this.airService.addCharacteristic(this.characteristic.PM10Density);
-
-        services.push(this.airService);
+        this.airService.addCharacteristic(this.Characteristic.StatusFault);
+        this.airService.addCharacteristic(this.Characteristic.PM2_5Density);
+        this.airService.addCharacteristic(this.Characteristic.PM10Density);
     
-        return services;
+        return [informationService, this.airService];
     }
 }

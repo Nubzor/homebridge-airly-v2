@@ -1,7 +1,7 @@
-'use strict';
+import { API } from 'homebridge';
 
-const AirAccessory = require('./AirAccessory');
+import AirAccessory from './AirAccessory';
 
-module.exports = function (homebridge) {
+module.exports = function (homebridge: API) {
     homebridge.registerAccessory('Air', AirAccessory);
 };
