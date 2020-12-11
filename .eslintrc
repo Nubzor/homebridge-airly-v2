@@ -1,0 +1,42 @@
+{
+    "extends": [
+      "eslint:recommended"
+    ],
+    "plugins": [
+        "jest"
+    ],
+    "env": {
+        "node": true,
+        "jest/globals": true
+    },
+    "parserOptions": {
+      "ecmaVersion": 2018,
+      "sourceType": "module"
+    },
+    "ignorePatterns": [
+      "dist"
+    ],
+    "rules": {
+      "quotes": ["warn", "single"],
+      "indent": ["warn", 4, { "SwitchCase": 1 }],
+      "semi": ["off"],
+      "comma-dangle": ["warn", "always-multiline"],
+      "dot-notation": "off",
+      "eqeqeq": "warn",
+      "curly": ["warn", "all"],
+      "brace-style": ["warn"],
+      "prefer-arrow-callback": ["warn"],
+      "max-len": ["warn", 140],
+      "no-console": ["warn"], // use the provided Homebridge log method instead
+      "no-non-null-assertion": ["off"],
+      "comma-spacing": ["error"],
+      "no-multi-spaces": ["warn", { "ignoreEOLComments": true }],
+      "lines-between-class-members": ["warn", "always", {"exceptAfterSingleLine": true}],
+      "jest/no-disabled-tests": "warn",
+      "jest/no-focused-tests": "error",
+      "jest/no-identical-title": "error",
+      "jest/prefer-to-have-length": "warn",
+      "jest/valid-expect": "error"
+    }
+  }
+  
