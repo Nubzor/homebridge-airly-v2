@@ -2,7 +2,7 @@
   "name": "homebridge-airly-v2-nubzor",
   "version": "1.0.1",
   "description": "A fork of Homebride-airly-v2 plugin orginally made by andrzejf1994. The fork has been created as the original npm plugin was out of date and doesn't work properly with new Airly v2 API",
-  "main": "index.js",
+  "main": "src/index.js",
   "keywords": [
     "homebridge-plugin",
     "homebridge",
@@ -11,7 +11,7 @@
     "pollution"
   ],
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "jest tests/",
     "watch": "nodemon"
   },
   "repository": {
@@ -29,7 +29,8 @@
   },
   "homepage": "https://github.com/Nubzor/homebridge-airly-v2#readme",
   "devDependencies": {
-    "nodemon": "^2.0.6",
-    "homebridge": "^1.2.3"
+    "homebridge": "^1.2.3",
+    "jest": "^26.6.3",
+    "nodemon": "^2.0.6"
   }
 }
